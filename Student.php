@@ -31,8 +31,8 @@ if (isset($_GET["class_id"])) {
         <div class="left-container">
             <a href="manageClasses.php?class_id=<?php echo $class_id ?>"><?php echo $classname ?></a>
             <a href="Student.php?class_id=<?php echo $class_id ?>" class="active">Students</a>
-            <a href="totalAttendance.php">Total Attendance</a>
-            <a href="totalGrades.php">Total Grades</a>
+            <a href="totalAttendance.php?class_id=<?php echo $class_id ?>">Total Attendance</a>
+            <a href="totalGrades.php?class_id=<?php echo $class_id ?>">Total Grades</a>
         </div>
         <div class="right-container">
             <h2> <a href="index.php" style="color:black">

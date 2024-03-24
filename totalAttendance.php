@@ -53,6 +53,7 @@ if (isset($_GET['class_id'])) {
     <div class="container">
         <div class="left-container">
             <a href="manageClasses.php?class_id=<?php echo $class_id ?>"><?php echo $classname ?></a>
+            <a href="Student.php?class_id=<?php echo $class_id ?>">Students</a>
             <a href="totalAttendance.php?class_id=<?php echo $class_id ?>" class="active">Total Attendance</a>
             <a href="totalGrades.php?class_id=<?php echo $class_id ?>">Total Grades</a>
         </div>
@@ -92,14 +93,7 @@ if (isset($_GET['class_id'])) {
                 </tbody>
             </table>
             <br>
-            <button type="button" onclick="calculateAttendanceStatistics()">Calculate Attendance Statistics</button>
-            <!-- </form> -->
-
-            <!-- Display attendance statistics -->
-            <div id="attendanceStatistics" style="margin-top: 20px;">
-                <h3>Attendance Statistics</h3>
-                <p>Number of people who got below 75% attendance: <span id="below75Count">- 1.</span></p>
-            </div>
+            <button type="button" onclick="downloadGradingSheet()">Download Grading Sheet</button>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -109,23 +103,37 @@ if (isset($_GET['class_id'])) {
     <script>
         let table = $('#myTable').DataTable();
 
-        function calculateAttendanceStatistics() {
-            // Get attendance data from the table
-            const attendanceData = table.rows().data().toArray();
+        function downloadGradingSheet() {
+            // Get table data
+            var table = document.getElementById("myTable");
+            var rows = table.rows;
+            var csv = [];
 
-            // Calculate the number of people who got below 75% attendance
-            const below75Count = attendanceData.reduce((count, row) => {
-                // Assuming the attendance values are in columns 2 and onward (index 1 and onward)
-                for (let i = 2; i < row.length; i++) {
-                    if (parseFloat(row[i]) < 75) {
-                        return count + 1;
-                    }
+            // Iterate through rows and cells to create CSV
+            for (var i = 0; i < rows.length; i++) {
+                var row = [];
+                var cells = rows[i].cells;
+                for (var j = 0; j < cells.length; j++) {
+                    row.push(cells[j].textContent.trim());
                 }
-                return count;
-            }, 0);
+                csv.push(row.join(","));
+            }
 
-            // Display the calculated statistics
-            $('#below75Count').text(below75Count);
+            // Create CSV file content
+            var csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
+
+            // Create download link
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "grading_sheet.csv");
+
+            // Append link to the document and trigger download
+            document.body.appendChild(link);
+            link.click();
+
+            // Remove the link from the document
+            document.body.removeChild(link);
         }
     </script>
 </body>

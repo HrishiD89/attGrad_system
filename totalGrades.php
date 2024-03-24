@@ -54,6 +54,7 @@ if (isset($_GET['class_id'])) {
     <div class="container">
         <div class="left-container">
             <a href="manageClasses.php?class_id=<?php echo $class_id ?>"><?php echo $classname ?></a>
+            <a href="Student.php?class_id=<?php echo $class_id ?>">Students</a>
             <a href="totalAttendance.php?class_id=<?php echo $class_id ?>">Total Attendance</a>
             <a href="totalGrades.php?class_id=<?php echo $class_id ?>" class="active">Total Grades</a>
         </div>
@@ -61,56 +62,85 @@ if (isset($_GET['class_id'])) {
             <h2> <a href="manageClasses.php?class_id=<?php echo $class_id ?>" style="color:black">
                     <i class="fa-solid fa-backward"></i>
                 </a>Total Grading </h2><br />
-            <form id="totalGradingForm">
-                <table id="myTable" class="display">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Student-ID</th>
-                            <?php
-                            foreach ($subjects as $x) {
-                                echo '<th>' . $x['subject_name'] . '</th>';
-                            }
-                            ?>
-                            <th>AVG</th>
-                            <th>Percentage%</th>
-                            <!-- Add more subject columns as needed -->
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Hrishikesh</td>
-                            <td>100</td>
-                            <td>65</td>
-                            <td>89</td>
-                            <td>66</td>
-                            <td>55</td>
-                            <td>70%</td>
-                            <!-- Add more subject input fields as needed -->
-                        </tr>
-                        <tr>
-                            <td>Mukesh</td>
-                            <td>105</td>
-                            <td>22</td>
-                            <td>91</td>
-                            <td>67</td>
-                            <td>68</td>
-                            <td>55%</td>
-                            <!-- Add more subject input fields as needed -->
-                        </tr>
-                        <!-- Add more rows as needed -->
-                    </tbody>
-                </table>
-                <br>
-                <button type="button" onclick="submitTotalGrading()">DownLoad Grading Sheet</button>
-            </form>
+            <table id="myTable" class="display">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Student-ID</th>
+                        <?php
+                        foreach ($subjects as $x) {
+                            echo '<th>' . $x['subject_name'] . '</th>';
+                        }
+                        ?>
+                        <th>AVG</th>
+                        <th>Percentage%</th>
+                        <!-- Add more subject columns as needed -->
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    // Query to fetch grades for each student
+                    $query_grades = "SELECT s.student_name, s.student_id, g.subject_id, g.grade
+                            FROM students s
+                            LEFT JOIN grades g ON s.student_id = g.student_id
+                            WHERE s.class_id = $class_id";
 
-            <!-- Display demo statistics -->
-            <div class="stats">
-                <h3>Demo Statistics</h3>
-                <p>Highest Percentage: <span id="averageMarks">-</span></p>
-                <p>Highest Scorer: <span id="highestScore">-</span></p>
-            </div>
+                    $result_grades = mysqli_query($conn, $query_grades);
+                    $student_grades = array();
+
+                    if (mysqli_num_rows($result_grades) > 0) {
+                        // Fetch student grades and calculate average and percentage
+                        while ($row = mysqli_fetch_assoc($result_grades)) {
+                            $student_name = $row['student_name'];
+                            $student_id = $row['student_id'];
+                            $subject_id = $row['subject_id'];
+                            $grade = $row['grade'];
+
+                            // Store grades for each student and subject
+                            $student_grades[$student_id][$subject_id] = $grade;
+                        }
+
+                        // Display student grades and calculate average and percentage
+                        // Display student grades and calculate average and percentage
+                        foreach ($student_grades as $student_id => $grades) {
+                            // Fetch student name and ID within the loop
+                            $student_query = "SELECT student_name FROM students WHERE student_id = $student_id";
+                            $student_result = mysqli_query($conn, $student_query);
+                            $student_row = mysqli_fetch_assoc($student_result);
+                            $student_name = $student_row['student_name'];
+
+                            echo '<tr>';
+                            // Display student name and ID
+                            echo '<td>' . $student_name . '</td>';
+                            echo '<td>' . $student_id . '</td>';
+
+                            $total_marks = 0;
+                            $subject_count = count($subjects);
+
+                            // Display grades for each subject
+                            foreach ($subjects as $subject) {
+                                $subject_id = $subject['subject_id'];
+                                $grade = isset($grades[$subject_id]) ? $grades[$subject_id] : 0;
+                                echo '<td>' . $grade . '</td>';
+                                $total_marks += $grade;
+                            }
+
+                            // Calculate and display average
+                            $average = $total_marks / $subject_count;
+                            echo '<td>' . number_format($average, 2) . '</td>';
+
+                            // Calculate and display percentage
+                            $percentage = ($total_marks / ($subject_count * 100)) * 100;
+                            echo '<td>' . number_format($percentage, 2) . '%</td>';
+                            echo '</tr>';
+                        }
+                    }
+                    ?>
+                </tbody>
+            </table>
+            <button type="button" onclick="downloadGradingSheet()">Download Grading Sheet</button>
+
+
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -120,41 +150,37 @@ if (isset($_GET['class_id'])) {
     <script>
         let table = $('#myTable').DataTable();
 
-        function submitTotalGrading() {
-            const formData = $('#totalGradingForm').serializeArray();
-            console.log(formData);
-            // Add your logic here to handle the submitted total grading data
-            // For example, you can send it to the server using AJAX
+        function downloadGradingSheet() {
+            // Get table data
+            var table = document.getElementById("myTable");
+            var rows = table.rows;
+            var csv = [];
 
-            // Update demo statistics
-            updateDemoStatistics();
-        }
+            // Iterate through rows and cells to create CSV
+            for (var i = 0; i < rows.length; i++) {
+                var row = [];
+                var cells = rows[i].cells;
+                for (var j = 0; j < cells.length; j++) {
+                    row.push(cells[j].textContent.trim());
+                }
+                csv.push(row.join(","));
+            }
 
-        function updateDemoStatistics() {
-            // Calculate and update demo statistics based on the input data
-            const averageMarks = calculateAverageMarks();
-            const highestScore = calculateHighestScore();
+            // Create CSV file content
+            var csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
 
-            // Display the calculated statistics
-            $('#averageMarks').text(averageMarks.toFixed(2));
-            $('#highestScore').text(highestScore);
-        }
+            // Create download link
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "grading_sheet.csv");
 
-        function calculateAverageMarks() {
-            // Calculate average marks based on the input data
-            // Replace this with your actual calculation logic
-            const totalMarks = $('.subject-marks').toArray().reduce((sum, input) => sum + parseFloat(input.value), 0);
-            const numberOfSubjects = $('.subject-marks').length;
+            // Append link to the document and trigger download
+            document.body.appendChild(link);
+            link.click();
 
-            return totalMarks / numberOfSubjects;
-        }
-
-        function calculateHighestScore() {
-            // Calculate highest score based on the input data
-            // Replace this with your actual calculation logic
-            const highestScore = Math.max(...$('.subject-marks').toArray().map(input => parseFloat(input.value)));
-
-            return highestScore;
+            // Remove the link from the document
+            document.body.removeChild(link);
         }
     </script>
 </body>
